@@ -38,6 +38,10 @@
   }
   .half-toggle button.on{background:#fff; color:var(--accent)}
 
+  /* 검색 중(키보드 올라옴): 검색과 결과만 남김 */
+  body.typing header, body.typing .hint, body.typing .quick, body.typing footer{display:none}
+  body.typing .search-wrap{padding-top:10px}
+
   /* ── search ── */
   .search-wrap{padding:14px 14px 0; position:sticky; top:0; background:var(--paper); z-index:5}
   .search-box{position:relative}
@@ -354,6 +358,8 @@ function showSpecial(band, play, memo){
 }
 
 $q.addEventListener("input", onInput);
+$q.addEventListener("focus", ()=>document.body.classList.add("typing"));
+$q.addEventListener("blur",  ()=>setTimeout(()=>document.body.classList.remove("typing"), 250));
 </script>
 <script>
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
