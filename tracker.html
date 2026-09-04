@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1f3864">
+<title>CAPRA 게임 트래커</title>
+<style>
+  :root{
+    --ink:#14181d; --paper:#f7f6f2; --line:#d8d5cc; --navy:#1f3864;
+    --run:#2e7d32; --quick:#1565c0; --shot:#6a3cb5; --screen:#d96c00; --blitz:#c62828;
+    --ok:#2e7d32; --bad:#c62828;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:var(--paper); color:var(--ink); max-width:760px; margin:0 auto; min-height:100dvh; padding-bottom:40px;
+  }
+  header{background:var(--navy); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:8px}
+  header h1{font-size:16px; font-weight:800; flex:1}
+  header button{font:inherit; font-weight:800; font-size:13px; padding:8px 12px; border-radius:10px; border:2px solid rgba(255,255,255,.5); background:transparent; color:#fff; cursor:pointer}
+  header button.on{background:#fff; color:var(--navy)}
+
+  .dd-bar{display:flex; align-items:center; gap:10px; padding:12px 14px 6px; flex-wrap:wrap}
+  .dd{font-size:38px; font-weight:900; letter-spacing:-.02em}
+  .dd small{font-size:14px; font-weight:700; color:#6b6a63; display:block}
+  .adj{display:flex; gap:6px; flex-wrap:wrap; margin-left:auto}
+  .adj button{font:inherit; font-weight:800; font-size:14px; padding:8px 11px; border-radius:10px; border:2px solid var(--line); background:#fff; cursor:pointer}
+  .adj button.sel{border-color:var(--navy); background:var(--navy); color:#fff}
+
+  .recs{display:flex; gap:8px; overflow-x:auto; padding:8px 14px 4px}
+  .rec{min-width:150px; background:#fff; border:2px solid var(--line); border-top:6px solid var(--pc,var(--line)); border-radius:14px; padding:10px 12px; cursor:pointer; flex-shrink:0}
+  .rec .rn{font-size:18px; font-weight:900}
+  .rec .rp{font-size:22px; font-weight:900; color:var(--navy)}
+  .rec .rr{font-size:11px; font-weight:600; color:#6b6a63; line-height:1.35; margin-top:2px}
+
+  section{padding:8px 14px 0}
+  h2.step{font-size:14px; font-weight:900; color:#5a584e; margin:8px 2px 6px}
+  h2.step span{color:var(--navy)}
+  .grid{display:flex; flex-wrap:wrap; gap:6px}
+  .grid button{
+    font:inherit; font-weight:800; font-size:15px; padding:11px 12px; border-radius:11px;
+    border:2px solid var(--line); border-left:7px solid var(--pc,var(--line)); background:#fff; cursor:pointer;
+  }
+  .grid button.sel{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .covgrid button{border-left-width:2px; font-size:17px; padding:13px 16px}
+  .ydgrid button{border-left-width:2px; min-width:52px; font-size:18px; text-align:center}
+  .ydgrid .minus{color:var(--bad)} .ydgrid .plus{color:var(--ok)}
+  .evgrid button{border-left-width:2px; font-size:16px; font-weight:900}
+  .ev-td{color:var(--ok)} .ev-to{color:var(--bad)}
+
+  .toast{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+    background:var(--ink); color:#fff; font-weight:800; font-size:15px; padding:12px 18px;
+    border-radius:12px; opacity:0; pointer-events:none; transition:opacity .2s; max-width:90vw; text-align:center; z-index:20;
+  }
+  .toast.show{opacity:1}
+
+  /* board */
+  #board{display:none; padding:10px 14px}
+  .card{background:#fff; border:2px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px}
+  .card h3{font-size:15px; font-weight:900; margin-bottom:8px}
+  .bar-row{display:flex; align-items:center; gap:8px; margin-bottom:5px; font-size:14px; font-weight:700}
+  .bar-row .lbl{width:52px}
+  .bar{flex:1; height:16px; background:#eee; border-radius:8px; overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--navy)}
+  .bar-row .pct{width:64px; text-align:right; font-size:13px; color:#6b6a63}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th,td{padding:6px 4px; text-align:left; border-bottom:1px solid #eee}
+  th{font-size:12px; color:#6b6a63}
+  td.num{text-align:right; font-weight:800}
+  .warn{color:var(--bad); font-weight:900}
+  .log{font-size:13px; line-height:1.7; color:#454439}
+  textarea{width:100%; height:120px; font-size:12px; font-family:monospace; border:2px solid var(--line); border-radius:10px; padding:8px; margin-top:6px}
+  .card button, .rowbtns button{font:inherit; font-weight:800; font-size:14px; padding:9px 14px; border-radius:10px; border:2px solid var(--ink); background:#fff; cursor:pointer; margin:4px 6px 0 0}
+  .danger{border-color:var(--bad)!important; color:var(--bad)}
+</style>
+</head>
+<body>
+<header>
+  <h1>CAPRA 게임 트래커<br><small style="font-weight:500;opacity:.75">vs 인하 틸드래곤스</small></h1>
+  <button onclick="location.href='./index.html'">콜</button>
+  <button onclick="undo()">↩ 취소</button>
+  <button id="tabRec" class="on" onclick="tab('rec')">기록</button>
+  <button id="tabBoard" onclick="tab('board')">보드</button>
+</header>
+
+<div id="recView">
+  <div class="dd-bar">
+    <div class="dd"><span id="ddText">1st & 10</span><small id="playCount">오늘 0플레이 · 드라이브 1</small></div>
+    <div class="adj">
+      <button onclick="setDown(1)" id="d1">1st</button><button onclick="setDown(2)" id="d2">2nd</button>
+      <button onclick="setDown(3)" id="d3">3rd</button><button onclick="setDown(4)" id="d4">4th</button>
+      <button onclick="adjGo(-1)">-1</button><button onclick="adjGo(1)">+1</button>
+      <button onclick="adjGo(-5)">-5</button><button onclick="adjGo(5)">+5</button>
+      <button onclick="newDrive()">새 드라이브</button>
+    </div>
+  </div>
+
+  <h2 class="step" style="padding:0 14px">추천 (관측 커버리지 + 오늘 결과 반영)</h2>
+  <div class="recs" id="recs"></div>
+
+  <section>
+    <h2 class="step"><span>①</span> 작전</h2>
+    <div class="grid" id="playGrid"></div>
+  </section>
+  <section>
+    <h2 class="step"><span>②</span> 커버리지 (스냅 후 본 것)</h2>
+    <div class="grid covgrid" id="covGrid"></div>
+    <div class="grid" style="margin-top:6px">
+      <button id="blitzBtn" style="border-left-width:2px;font-size:16px;font-weight:900;color:var(--blitz)" onclick="toggleBlitz()">⚡ 블리츠 왔음</button>
+    </div>
+    <h2 class="step">수비 프론트 (한번 누르면 유지 — 바뀔 때만 변경)</h2>
+    <div class="grid" id="frontGrid"></div>
+  </section>
+  <section>
+    <h2 class="step"><span>③</span> 결과 야드 — 누르면 기록됨</h2>
+    <div class="grid ydgrid" id="ydGrid"></div>
+    <h2 class="step">이벤트로 종료</h2>
+    <div class="grid evgrid">
+      <button class="ev-td" onclick="commitEvent('TD')">터치다운</button>
+      <button class="ev-to" onclick="commitEvent('INT')">인터셉트</button>
+      <button class="ev-to" onclick="commitEvent('펌블')">펌블 로스트</button>
+      <button onclick="commitEvent('펀트')">펀트</button>
+    </div>
+  </section>
+</div>
+
+<div id="board">
+  <div class="card"><h3>커버리지 관측 분포</h3><div id="covBoard"></div></div>
+  <div class="card"><h3>작전별 오늘 성적</h3><div style="overflow-x:auto"><table id="playBoard"></table></div>
+    <div style="font-size:12px;color:#6b6a63;margin-top:6px">⚠ = 3회 이상 콜 — 패턴 읽힐 위험</div></div>
+  <div class="card"><h3>콘셉트별 성공률</h3><div id="conBoard"></div></div>
+  <div class="card"><h3>최근 기록</h3><div class="log" id="logBoard"></div></div>
+  <div class="card"><h3>내보내기 / 초기화</h3>
+    <button onclick="exportData()">전체 기록 내보내기</button>
+    <button class="danger" onclick="resetGame()">새 경기 (전체 삭제)</button>
+    <textarea id="exportBox" style="display:none" readonly></textarea>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── plays ── */
+const PLAYS = {
+"인존":"런","다이브":"런","크런치":"런","젯-인존":"런","오빗-토스":"런","오빗-인존":"런","QB드로우":"런",
+"올히치":"퀵","제로":"퀵","스틱":"퀵","스매시인":"퀵","제트-제로":"퀵",
+"크로스":"샷","4버티컬":"샷","대거섀로우":"샷","플러드":"샷","스매시아웃":"샷","PA 1포스트":"샷",
+"터널":"스크린","와이드스크린":"스크린","블카페2":"블리츠 대응"};
+const TYPE_COLOR = {"런":"var(--run)","퀵":"var(--quick)","샷":"var(--shot)","스크린":"var(--screen)","블리츠 대응":"var(--blitz)"};
+const CONCEPT = {
+"인존":"안쪽런","다이브":"안쪽런","크런치":"안쪽런","젯-인존":"안쪽런","오빗-인존":"안쪽런","QB드로우":"안쪽런",
+"오빗-토스":"외곽런",
+"올히치":"퀵","제로":"퀵","스틱":"퀵","스매시인":"퀵","제트-제로":"퀵",
+"크로스":"딥샷","4버티컬":"딥샷","대거섀로우":"딥샷","플러드":"딥샷","스매시아웃":"딥샷","PA 1포스트":"딥샷",
+"터널":"스크린","와이드스크린":"스크린","블카페2":"블리츠답"};
+const COVS = ["커버0","커버1","커버2","커버3","커버4","?"];
+const FRONTS = ["3-3","4-2","4-2-5","?"];
+
+/* 사전 상성 (0~1) — 콘셉트 기본값 + 작전별 오버라이드 */
+const CPRIOR = {
+"안쪽런":{"커버0":.55,"커버1":.6,"커버2":.6,"커버3":.5,"커버4":.75,"블리츠":.6},
+"외곽런":{"커버0":.5,"커버1":.6,"커버2":.55,"커버3":.5,"커버4":.65,"블리츠":.45},
+"퀵":{"커버0":.7,"커버1":.55,"커버2":.6,"커버3":.65,"커버4":.65,"블리츠":.65},
+"딥샷":{"커버0":.5,"커버1":.55,"커버2":.6,"커버3":.65,"커버4":.5,"블리츠":.35},
+"스크린":{"커버0":.7,"커버1":.6,"커버2":.55,"커버3":.55,"커버4":.5,"블리츠":.7},
+"블리츠답":{"커버0":.85,"커버1":.55,"커버2":.45,"커버3":.45,"커버4":.45,"블리츠":.8}};
+const OVER = {
+"스매시아웃":{"커버2":.8},"플러드":{"커버3":.8},"4버티컬":{"커버3":.75},"올히치":{"커버3":.7,"커버4":.7},
+"스틱":{"커버2":.7,"커버4":.7},"크런치":{"커버4":.78},"크로스":{"커버0":.75,"커버1":.8},"스매시인":{"커버1":.7},
+"제트-제로":{"커버1":.65,"블리츠":.7},"다이브":{"커버0":.7,"블리츠":.75},"제로":{"블리츠":.7},"터널":{"블리츠":.72},
+"PA 1포스트":{"커버0":.4,"커버1":.5,"커버2":.65,"커버3":.7,"커버4":.68,"블리츠":.3},"QB드로우":{"커버3":.6}};
+const prior = (p,c)=> (OVER[p]&&OVER[p][c])!==undefined ? OVER[p][c] : CPRIOR[CONCEPT[p]][c];
+/* 첩보 반영 커버리지 사전분포 (의사관측) */
+const COV_PRIOR = {"커버0":.3,"커버1":.4,"커버2":2,"커버3":2,"커버4":2};  /* 첩보: 커버2·3·4 위주 */
+
+/* ── state ── */
+let S = {down:1, toGo:10, drive:1, plays:[]};
+try{ const raw = localStorage.getItem('capra_game_v1'); if(raw) S = JSON.parse(raw); }catch(e){}
+function save(){ try{ localStorage.setItem('capra_game_v1', JSON.stringify(S)); }catch(e){} }
+
+let selPlay = null, selCov = "?", selBlitz = false, selFront = "?";
+
+/* ── success rule ── */
+function isSuccess(down,toGo,yd,ev){
+  if(ev==='TD') return true;
+  if(ev==='INT'||ev==='펌블') return false;
+  if(down===1) return yd >= 0.4*toGo;
+  if(down===2) return yd >= 0.6*toGo;
+  return yd >= toGo;
+}
+
+/* ── recommendation ── */
+function covDist(){
+  const cnt = {...COV_PRIOR};
+  for(const p of S.plays) if(p.cov && p.cov!=="?") cnt[p.cov]=(cnt[p.cov]||0)+1;
+  const tot = Object.values(cnt).reduce((a,b)=>a+b,0);
+  const d={}; for(const c in cnt) d[c]=cnt[c]/tot; return d;
+}
+function playStats(){
+  const st={};
+  for(const p of S.plays){
+    if(!p.play) continue;
+    st[p.play] = st[p.play]||{n:0,s:0,y:0};
+    st[p.play].n++; if(p.success) st[p.play].s++; st[p.play].y+=(p.yd||0);
+  }
+  return st;
+}
+function pSuccess(play, cov){
+  const K=4, a0 = prior(play,cov)*K;
+  let n=0, s=0;
+  for(const p of S.plays){
+    if(!p.play || p.blitz || !p.cov || p.cov==="?" || p.cov!==cov) continue;
+    if(p.play===play){ n+=1; s+= p.success?1:0; }
+    else if(CONCEPT[p.play]===CONCEPT[play]){ n+=.4; s+= p.success?.4:0; }
+  }
+  return (a0+s)/(K+n);
+}
+function pSuccessBlitz(play){
+  const K=4, a0 = prior(play,"블리츠")*K;
+  let n=0, s=0;
+  for(const p of S.plays){
+    if(!p.play || !p.blitz) continue;
+    if(p.play===play){ n+=1; s+= p.success?1:0; }
+    else if(CONCEPT[p.play]===CONCEPT[play]){ n+=.4; s+= p.success?.4:0; }
+  }
+  return (a0+s)/(K+n);
+}
+function blitzRate(){
+  let n=0, b=0;
+  for(const p of S.plays) if(p.play){ n++; if(p.blitz) b++; }
+  return (0.5 + b) / (4 + n);   /* 사전 약 12% */
+}
+function candidates(){
+  const d=S.down, g=S.toGo;
+  if(d>=3 && g<=2) return ["크런치","다이브","인존","스틱"];
+  if(d>=3 && g<=6) return ["스틱","스매시아웃","올히치","크로스","대거섀로우","스매시인"];
+  if(d>=3) return ["대거섀로우","크로스","터널","플러드","4버티컬"];
+  if(d===2 && g<=3) return ["PA 1포스트","4버티컬","대거섀로우","다이브","제트-제로","크런치"];
+  if(d===2 && g>=7) return ["터널","와이드스크린","QB드로우","스틱","대거섀로우"];
+  if(d===2) return ["인존","스틱","스매시아웃","제트-제로","크런치","젯-인존"];
+  return ["인존","크런치","젯-인존","오빗-인존","스틱","PA 1포스트","올히치"];
+}
+function recommend(){
+  const dist = covDist(), st = playStats();
+  const pB = blitzRate();
+  const scored = candidates().map(play=>{
+    let base=0; for(const c of ["커버0","커버1","커버2","커버3","커버4"]) base += dist[c]*pSuccess(play,c);
+    let sc = (1-pB)*base + pB*pSuccessBlitz(play);
+    const calls = st[play]?st[play].n:0;
+    sc -= 0.04*Math.min(calls,5);
+    /* rationale */
+    const topCov = Object.entries(dist).sort((a,b)=>b[1]-a[1])[0];
+    let r = `${topCov[0]} ${Math.round(topCov[1]*100)}% 관측`;
+    if(pB>=0.2) r += ` · ⚡블리츠 ${Math.round(pB*100)}%`;
+    if(st[play]) r += ` · 오늘 ${st[play].s}/${st[play].n}`;
+    if(calls>=3) r += ` · ⚠${calls}회 콜`;
+    return {play, sc, r};
+  }).sort((a,b)=>b.sc-a.sc).slice(0,3);
+  document.getElementById('recs').innerHTML = scored.map(x=>
+    `<div class="rec" style="--pc:${TYPE_COLOR[PLAYS[x.play]]}" onclick="pickPlay('${x.play}')">
+      <div class="rn">${x.play}</div><div class="rp">${Math.round(x.sc*100)}%</div><div class="rr">${x.r}</div></div>`).join("");
+}
+
+/* ── UI render ── */
+const $=id=>document.getElementById(id);
+function renderTop(){
+  const nth=["","1st","2nd","3rd","4th"];
+  $('ddText').textContent = `${nth[S.down]} & ${S.toGo}`;
+  $('playCount').textContent = `오늘 ${S.plays.length}플레이 · 드라이브 ${S.drive}`;
+  for(let i=1;i<=4;i++) $('d'+i).classList.toggle('sel', S.down===i);
+  recommend();
+}
+function renderGrids(){
+  $('playGrid').innerHTML = Object.keys(PLAYS).map(p=>
+    `<button style="--pc:${TYPE_COLOR[PLAYS[p]]}" id="pb_${p}" onclick="pickPlay('${p}')">${p}</button>`).join("");
+  $('covGrid').innerHTML = COVS.map(c=>
+    `<button id="cb_${c}" onclick="pickCov('${c}')">${c}</button>`).join("");
+  const yds=[-5,-3,-1,0,1,2,3,4,5,6,8,10,15,20,25];
+  $('ydGrid').innerHTML = yds.map(y=>
+    `<button class="${y<0?'minus':y>0?'plus':''}" onclick="commitYd(${y})">${y>0?'+'+y:y}</button>`).join("")
+    + `<button onclick="commitCustom()">직접</button>`;
+  $('frontGrid').innerHTML = FRONTS.map(f=>
+    `<button id="fb_${f}" style="border-left-width:2px" onclick="pickFront('${f}')">${f}</button>`).join("");
+  pickCov("?"); pickFront("?");
+}
+function pickPlay(p){
+  selPlay = p;
+  document.querySelectorAll('#playGrid button').forEach(b=>b.classList.toggle('sel', b.id==='pb_'+p));
+}
+function pickCov(c){
+  selCov = c;
+  document.querySelectorAll('#covGrid button').forEach(b=>b.classList.toggle('sel', b.id==='cb_'+c));
+}
+function toggleBlitz(){
+  selBlitz = !selBlitz;
+  document.getElementById('blitzBtn').classList.toggle('sel', selBlitz);
+}
+function pickFront(f){
+  selFront = f;
+  document.querySelectorAll('#frontGrid button').forEach(b=>b.classList.toggle('sel', b.id==='fb_'+f));
+}
+
+/* ── commit ── */
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function commitYd(yd){
+  if(selPlay===null){ toast('① 작전을 먼저 선택'); return; }
+  record(selPlay, selCov, yd, null);
+}
+function commitCustom(){
+  if(selPlay===null){ toast('① 작전을 먼저 선택'); return; }
+  const v = prompt('야드 (음수 가능)'); if(v===null) return;
+  const yd = parseInt(v,10); if(isNaN(yd)){ toast('숫자만 입력'); return; }
+  record(selPlay, selCov, yd, null);
+}
+function commitEvent(ev){
+  if(ev!=='펀트' && selPlay===null){ toast('① 작전을 먼저 선택'); return; }
+  record(ev==='펀트'?null:selPlay, ev==='펀트'?null:selCov, 0, ev);
+}
+function record(play, cov, yd, ev){
+  const prev = {down:S.down, toGo:S.toGo, drive:S.drive};
+  const succ = play ? isSuccess(S.down, S.toGo, yd, ev) : null;
+  S.plays.push({play, cov, blitz:selBlitz, front:selFront, yd, ev, down:S.down, toGo:S.toGo, success:succ, prev});
+  let msg;
+  const nth=["","1st","2nd","3rd","4th"];
+  if(ev){
+    msg = `${play?play+' · ':''}${ev} — 드라이브 종료`;
+    S.drive++; S.down=1; S.toGo=10;
+  } else {
+    const remain = S.toGo - yd;
+    if(remain<=0){ S.down=1; S.toGo=10; msg=`${play} ${yd>=0?'+':''}${yd}yd → 퍼스트다운!`; }
+    else if(S.down>=4){ S.drive++; S.down=1; S.toGo=10; msg=`${play} ${yd}yd — 4th 실패, 공수교대`; }
+    else { S.down++; S.toGo=remain; msg=`${play} ${yd>=0?'+':''}${yd}yd → ${nth[S.down]} & ${S.toGo}`; }
+  }
+  selPlay=null; pickCov("?");
+  selBlitz=false; document.getElementById('blitzBtn').classList.remove('sel');
+  document.querySelectorAll('#playGrid button').forEach(b=>b.classList.remove('sel'));
+  save(); renderTop(); renderBoard(); toast(msg);
+}
+function undo(){
+  const last = S.plays.pop();
+  if(!last){ toast('취소할 기록 없음'); return; }
+  S.down=last.prev.down; S.toGo=last.prev.toGo; S.drive=last.prev.drive;
+  save(); renderTop(); renderBoard(); toast('마지막 기록 취소됨');
+}
+
+/* ── manual adjust ── */
+function setDown(d){ S.down=d; save(); renderTop(); }
+function adjGo(v){ S.toGo=Math.max(1, S.toGo+v); save(); renderTop(); }
+function newDrive(){ S.drive++; S.down=1; S.toGo=10; save(); renderTop(); toast('새 드라이브 — 1st & 10'); }
+
+/* ── board ── */
+function renderBoard(){
+  const dist = covDist(), st = playStats();
+  const obs = {}; let obsTot=0;
+  for(const p of S.plays) if(p.cov && p.cov!=="?"){ obs[p.cov]=(obs[p.cov]||0)+1; obsTot++; }
+  $('covBoard').innerHTML = obsTot===0 ? '<div style="color:#8a887f;font-size:14px">아직 관측 없음</div>' :
+    ["커버0","커버1","커버2","커버3","커버4"].map(c=>{
+      const n=obs[c]||0, pct=Math.round(n/obsTot*100);
+      return `<div class="bar-row"><span class="lbl">${c}</span><div class="bar"><i style="width:${pct}%"></i></div><span class="pct">${n}회 ${pct}%</span></div>`;
+    }).join("");
+  let bn=0, bb=0, fr={};
+  for(const p of S.plays) if(p.play){ bn++; if(p.blitz) bb++; if(p.front && p.front!=="?") fr[p.front]=(fr[p.front]||0)+1; }
+  let extra = bn? `<div style="font-size:13px;font-weight:700;margin-top:8px">⚡ 블리츠 동반: ${bb}회 (${Math.round(bb/bn*100)}%)</div>` : '';
+  const frTot = Object.values(fr).reduce((a,b)=>a+b,0);
+  if(frTot) extra += `<div style="font-size:13px;font-weight:700;margin-top:4px">프론트: ` +
+    Object.entries(fr).sort((a,b)=>b[1]-a[1]).map(([f,n])=>`${f} ${Math.round(n/frTot*100)}%`).join(' · ') + `</div>`;
+  $('covBoard').innerHTML += extra;
+  const rows = Object.entries(st).sort((a,b)=>b[1].n-a[1].n);
+  $('playBoard').innerHTML = '<tr><th>작전</th><th style="text-align:right">콜</th><th style="text-align:right">성공</th><th style="text-align:right">평균yd</th></tr>' +
+    (rows.length? rows.map(([p,v])=>
+      `<tr><td>${v.n>=3?'<span class="warn">⚠</span> ':''}${p}</td><td class="num">${v.n}</td><td class="num">${v.s}/${v.n}</td><td class="num">${(v.y/v.n).toFixed(1)}</td></tr>`).join("")
+    : '<tr><td colspan="4" style="color:#8a887f">기록 없음</td></tr>');
+  const cs={};
+  for(const p of S.plays){ if(!p.play) continue; const c=CONCEPT[p.play]; cs[c]=cs[c]||{n:0,s:0}; cs[c].n++; if(p.success) cs[c].s++; }
+  $('conBoard').innerHTML = Object.keys(cs).length? Object.entries(cs).map(([c,v])=>
+    `<div class="bar-row"><span class="lbl" style="width:70px">${c}</span><div class="bar"><i style="width:${Math.round(v.s/v.n*100)}%"></i></div><span class="pct">${v.s}/${v.n}</span></div>`).join("")
+    : '<div style="color:#8a887f;font-size:14px">기록 없음</div>';
+  const nth=["","1st","2nd","3rd","4th"];
+  $('logBoard').innerHTML = S.plays.slice(-10).reverse().map(p=>
+    `${nth[p.down]}&${p.toGo} — ${p.play||'—'} · ${p.cov||'—'}${p.blitz?'⚡':''}${p.front&&p.front!=='?'?' · '+p.front:''} · ${p.ev? p.ev : (p.yd>=0?'+':'')+p.yd+'yd'} ${p.success===true?'✅':p.success===false?'❌':''}`
+  ).join('<br>') || '기록 없음';
+}
+function exportData(){
+  const box=$('exportBox'); box.style.display='block';
+  const nth=["","1st","2nd","3rd","4th"];
+  box.value = '순번\t다운\t거리\t작전\t커버리지\t블리츠\t프론트\t야드\t이벤트\t성공\n' +
+    S.plays.map((p,i)=>`${i+1}\t${nth[p.down]}\t${p.toGo}\t${p.play||''}\t${p.cov||''}\t${p.blitz?'O':''}\t${p.front||''}\t${p.yd}\t${p.ev||''}\t${p.success===true?'O':p.success===false?'X':''}`).join('\n');
+  box.select();
+  try{ document.execCommand('copy'); toast('클립보드에 복사됨'); }catch(e){ toast('아래 박스에서 복사하세요'); }
+}
+function resetGame(){
+  if(!confirm('전체 기록을 삭제하고 새 경기를 시작할까요?')) return;
+  S={down:1,toGo:10,drive:1,plays:[]}; save(); renderTop(); renderBoard(); toast('새 경기 시작');
+}
+
+/* ── tabs ── */
+function tab(t){
+  $('recView').style.display = t==='rec'?'block':'none';
+  $('board').style.display   = t==='board'?'block':'none';
+  $('tabRec').classList.toggle('on', t==='rec');
+  $('tabBoard').classList.toggle('on', t==='board');
+  if(t==='board') renderBoard();
+}
+
+renderGrids(); renderTop(); renderBoard();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  navigator.serviceWorker.register('./sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1f3864">
+<title>CAPRA 콜 파인더</title>
+<style>
+  :root{
+    --ink:#14181d; --paper:#f7f6f2; --line:#d8d5cc;
+    --navy:#1f3864; --half2:#14532d;
+    --run:#2e7d32; --quick:#1565c0; --shot:#6a3cb5; --screen:#d96c00; --blitz:#c62828;
+    --b-red:#c0392b; --b-blue:#1f5fbf; --b-gold:#b8860b; --b-purple:#7b3fb5;
+    --accent:var(--navy);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:var(--paper); color:var(--ink);
+    display:flex; flex-direction:column; max-width:760px; margin:0 auto; min-height:100dvh;
+  }
+  body.h2{--accent:var(--half2)}
+
+  /* ── header: half toggle ── */
+  header{
+    background:var(--accent); color:#fff; padding:12px 16px 14px;
+    display:flex; align-items:center; gap:14px; transition:background .2s;
+  }
+  header h1{font-size:17px; font-weight:800; letter-spacing:-.02em; flex:1; line-height:1.2}
+  header h1 small{display:block; font-size:11px; font-weight:500; opacity:.75}
+  .half-toggle{display:flex; border:2px solid rgba(255,255,255,.55); border-radius:12px; overflow:hidden}
+  .half-toggle button{
+    font:inherit; font-weight:800; font-size:18px; padding:10px 20px;
+    background:transparent; color:rgba(255,255,255,.65); border:0; cursor:pointer;
+  }
+  .half-toggle button.on{background:#fff; color:var(--accent)}
+
+  /* ── search ── */
+  .search-wrap{padding:14px 14px 0; position:sticky; top:0; background:var(--paper); z-index:5}
+  .search-box{position:relative}
+  #q{
+    width:100%; font:inherit; font-size:24px; font-weight:700; padding:16px 52px 16px 18px;
+    border:3px solid var(--ink); border-radius:16px; background:#fff; color:var(--ink); outline:none;
+  }
+  #q:focus{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%, transparent)}
+  #clear{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    width:40px; height:40px; border-radius:50%; border:0; background:var(--line);
+    font-size:20px; font-weight:800; color:var(--ink); cursor:pointer; display:none;
+  }
+  .hint{font-size:12px; color:#6b6a63; padding:8px 6px 0}
+
+  /* ── suggestions ── */
+  #sugg{list-style:none; padding:10px 0 4px}
+  #sugg li{
+    display:flex; align-items:center; gap:12px;
+    background:#fff; border:2px solid var(--line); border-left:8px solid var(--pc,var(--line));
+    border-radius:14px; padding:14px 16px; margin-bottom:8px; cursor:pointer;
+  }
+  #sugg li:active{background:#eef}
+  #sugg .name{font-size:21px; font-weight:800; letter-spacing:-.01em}
+  #sugg .name mark{background:#ffe58a; border-radius:3px; padding:0 1px}
+  #sugg .tag{margin-left:auto; font-size:12px; font-weight:700; color:#fff; background:var(--pc); border-radius:8px; padding:4px 9px; white-space:nowrap}
+  .empty{padding:26px 10px; text-align:center; color:#8a887f; font-size:15px}
+
+  /* ── quick emergency row ── */
+  .quick{display:flex; gap:8px; padding:12px 14px; overflow-x:auto}
+  .quick button{
+    font:inherit; font-weight:800; font-size:16px; padding:12px 16px; white-space:nowrap;
+    border-radius:12px; border:2px solid var(--ink); background:#fff; color:var(--ink); cursor:pointer;
+  }
+  .quick .bq{border-color:var(--bc); color:var(--bc); font-weight:900}
+
+  main{flex:1; padding:0 14px 30px; overflow-y:auto}
+
+  /* ── detail ── */
+  #detail{display:none}
+  .play-head{display:flex; align-items:baseline; gap:12px; margin:14px 2px 4px; flex-wrap:wrap}
+  .play-head h2{font-size:34px; font-weight:900; letter-spacing:-.03em}
+  .type-chip{font-size:13px; font-weight:800; color:#fff; border-radius:9px; padding:5px 11px}
+  .memo{font-size:16px; font-weight:600; color:#454439; margin:2px 2px 14px; line-height:1.45}
+  .memo b{color:var(--accent)}
+  .half-note{font-size:13px; font-weight:800; color:#fff; background:var(--accent); display:inline-block; border-radius:8px; padding:4px 10px; margin:0 0 10px}
+
+  .fam{margin-bottom:12px; background:#fff; border:2px solid var(--line); border-radius:16px; overflow:hidden}
+  .fam h3{font-size:18px; font-weight:900; color:var(--ink); background:#e9e7df; padding:10px 14px; margin:0}
+  .fam.hit{border-color:var(--accent)}
+  .fam.hit h3{background:var(--accent); color:#fff}
+  .calls{display:flex; flex-wrap:wrap; gap:8px; padding:10px}
+  .call{
+    background:#fff; border:2px solid var(--line); border-radius:12px; padding:10px 14px;
+    text-align:center; font-weight:900; font-size:23px; letter-spacing:-.01em; line-height:1.2; white-space:nowrap;
+  }
+  .call .band{display:inline-block; border-radius:7px; color:#fff; padding:1px 8px 2px; margin:0 1px}
+  .fam.hit .call{border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 30%, transparent)}
+
+  .seq{display:flex; flex-direction:column; gap:8px; margin-top:4px}
+  .seq div{background:#fff; border:2px solid var(--line); border-radius:14px; padding:14px 16px; font-size:22px; font-weight:900}
+  .seq div span{color:#8a887f; font-size:15px; font-weight:700; margin-right:10px}
+
+  #cats{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:8px; padding:6px 0 14px}
+  #cats button{
+    font:inherit; font-weight:800; font-size:15px; padding:14px 6px; line-height:1.2;
+    border-radius:12px; border:2px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+  }
+  #cats button:active{border-color:var(--accent)}
+  #cats .star{border-color:var(--accent); color:var(--accent)}
+  .cat-list{list-style:none; padding:8px 0}
+  .cat-list li{
+    display:flex; align-items:center; gap:10px;
+    background:#fff; border:2px solid var(--line); border-left:8px solid var(--pc,var(--line));
+    border-radius:14px; padding:13px 15px; margin-bottom:8px; cursor:pointer;
+  }
+  .cat-list .pname{font-size:20px; font-weight:900; letter-spacing:-.01em}
+  .cat-list .fname{font-size:13px; font-weight:700; color:#6b6a63}
+  .cat-list .note{margin-left:auto; font-size:12px; font-weight:700; color:#fff; background:var(--pc); border-radius:8px; padding:4px 9px; white-space:nowrap}
+  .back{
+    font:inherit; font-weight:800; font-size:14px; margin:12px 0 0; padding:8px 16px;
+    border-radius:10px; border:2px solid var(--ink); background:#fff; cursor:pointer;
+  }
+  footer{padding:10px 16px 18px; font-size:12px; color:#8a887f; text-align:center}
+  @media (max-width:420px){ .play-head h2{font-size:28px} .call{font-size:20px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>CAPRA 콜 파인더<small>콜링시스템 v3 · vs 인하 틸드래곤스</small></h1>
+  <a href="./tracker.html" style="font-weight:800;font-size:13px;color:#fff;border:2px solid rgba(255,255,255,.5);border-radius:10px;padding:9px 11px;text-decoration:none;white-space:nowrap">기록</a>
+  <div class="half-toggle" role="tablist">
+    <button id="btn1" class="on" onclick="setHalf(1)">전반</button>
+    <button id="btn2" onclick="setHalf(2)">후반</button>
+  </div>
+</header>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <input id="q" type="text" inputmode="search" autocomplete="off"
+           placeholder="작전 이름 검색 (예: 스매, ㅅㅁ, 레드존)">
+    <button id="clear" onclick="clearQ()">✕</button>
+  </div>
+  <div class="hint">초성·상황 키워드 검색 가능 · 코드네임 없는 밴드콜 = 특수 (레드=시리즈·블루=펀트·골드=다운다이브·퍼플=쇼블)</div>
+</div>
+
+<div class="quick">
+  <button class="bq" style="--bc:var(--b-red)" onclick="showSeries()">시리즈 · 레드</button>
+  <button class="bq" style="--bc:var(--b-blue)" onclick="showSpecial('블루','샷건펀트','펀트 대형 스페셜')">샷건펀트 · 블루</button>
+  <button class="bq" style="--bc:var(--b-gold)" onclick="showSpecial('골드','아이폼 시그널 다운 다이브','특수 단일 플레이')">다운다이브 · 골드</button>
+  <button class="bq" style="--bc:var(--b-purple)" onclick="showSpecial('퍼플','RB 쇼블','특수 단일 플레이')">RB쇼블 · 퍼플</button>
+</div>
+
+<main>
+  <nav id="cats"></nav>
+  <ul id="sugg"></ul>
+  <section id="detail"></section>
+</main>
+<footer>코드네임 없이 밴드+숫자만 = 특수 콜(숫자는 아무거나) · "킬킬" = 취소 후 재콜 · 스파이크·닐다운 = 오픈 콜 · 하프타임에 [후반] 전환 필수 · <a href="./tracker.html" style="color:var(--navy);font-weight:800">게임트래커 →</a></footer>
+
+<script>
+/* ───────── data (아대 v3에서 추출 — 콜시트와 전수 검증 완료) ───────── */
+const DATA = {
+"전반": {"PA 1포스트":{"콜트":"레드 원","탱크":"골드 투","펀치":"블루 파이브","치프":"블루 투","디젤":"퍼플 원","불독":"퍼플 파이브"},"QB드로우":{"콜트":"레드 투","탱크":"레드 포","펀치":"레드 쓰리","치프":"퍼플 쓰리","디젤":"레드 원","불독":"골드 포","점보":"골드 쓰리","카고":"골드 원","터보":"골드 원","폭스":"블루 파이브"},"블카페2":{"콜트":"레드 쓰리","탱크":"골드 쓰리","펀치":"레드 원","치프":"블루 포","디젤":"블루 투","불독":"퍼플 포","점보":"퍼플 원","카고":"블루 쓰리","터보":"블루 쓰리","폭스":"블루 쓰리"},"대거섀로우":{"콜트":"레드 포","탱크":"퍼플 포","펀치":"레드 투","치프":"레드 쓰리","디젤":"골드 파이브","불독":"레드 파이브","점보":"레드 원","카고":"레드 투","터보":"퍼플 투","폭스":"레드 포"},"오빗-토스":{"콜트":"레드 파이브","탱크":"블루 투","펀치":"블루 원","치프":"골드 쓰리","디젤":"블루 원","불독":"골드 원","점보":"레드 투","카고":"레드 파이브","터보":"블루 파이브","폭스":"골드 투"},"와이드스크린":{"콜트":"블루 원","탱크":"레드 쓰리","펀치":"퍼플 원","치프":"블루 파이브","디젤":"골드 투","불독":"블루 파이브","점보":"레드 포","카고":"레드 쓰리","터보":"골드 투","폭스":"퍼플 원"},"제트-제로":{"콜트":"블루 투","탱크":"퍼플 파이브","펀치":"퍼플 파이브","치프":"퍼플 포","디젤":"퍼플 쓰리","불독":"블루 쓰리","점보":"퍼플 쓰리","카고":"블루 투","터보":"블루 포","폭스":"레드 투"},"인존":{"콜트":"블루 쓰리","탱크":"퍼플 원","펀치":"골드 원","치프":"퍼플 투","디젤":"레드 파이브","불독":"골드 투","점보":"블루 원","카고":"블루 원","터보":"골드 포","폭스":"골드 파이브"},"올히치":{"콜트":"블루 포","탱크":"퍼플 쓰리","펀치":"블루 쓰리","치프":"레드 투","디젤":"골드 원","불독":"레드 원","점보":"골드 원","카고":"퍼플 파이브","터보":"퍼플 포","폭스":"골드 포"},"스매시아웃":{"콜트":"블루 파이브","탱크":"골드 원","펀치":"레드 파이브","치프":"골드 포","디젤":"골드 쓰리","불독":"블루 포","점보":"퍼플 포","카고":"블루 포","터보":"레드 투","폭스":"퍼플 파이브"},"제로":{"콜트":"골드 원","탱크":"블루 파이브","펀치":"퍼플 포","치프":"블루 쓰리","디젤":"레드 투","불독":"레드 투","점보":"골드 투","카고":"퍼플 포","터보":"레드 파이브","폭스":"블루 원"},"오빗-인존":{"콜트":"골드 투","탱크":"퍼플 투","펀치":"골드 포","치프":"레드 원","디젤":"레드 쓰리","불독":"블루 원","점보":"블루 파이브","카고":"골드 파이브","터보":"블루 원","폭스":"골드 원"},"터널":{"콜트":"골드 쓰리","탱크":"블루 원","펀치":"골드 투","치프":"퍼플 원","디젤":"블루 포","불독":"블루 투","점보":"블루 투","카고":"레드 원","터보":"골드 파이브","폭스":"레드 원"},"플러드":{"콜트":"골드 포","탱크":"골드 파이브","펀치":"레드 포","치프":"골드 투","디젤":"블루 파이브","불독":"퍼플 쓰리","점보":"퍼플 파이브","카고":"골드 포","터보":"레드 포","폭스":"블루 포"},"스틱":{"콜트":"골드 파이브","탱크":"블루 쓰리","펀치":"퍼플 투","치프":"레드 포","디젤":"블루 쓰리","불독":"골드 파이브","점보":"블루 포","카고":"블루 파이브","터보":"블루 투","폭스":"레드 파이브"},"다이브":{"콜트":"퍼플 원","탱크":"블루 포","펀치":"블루 투","치프":"골드 원","디젤":"퍼플 포","불독":"퍼플 원","점보":"골드 포","카고":"레드 포","터보":"골드 쓰리","폭스":"골드 쓰리"},"스매시인":{"콜트":"퍼플 투","탱크":"레드 파이브","펀치":"골드 쓰리","치프":"골드 파이브","점보":"퍼플 투","카고":"퍼플 투","터보":"퍼플 쓰리","폭스":"퍼플 쓰리"},"크런치":{"콜트":"퍼플 쓰리","탱크":"레드 원","펀치":"골드 파이브","치프":"블루 원","디젤":"퍼플 투","불독":"퍼플 투","점보":"레드 파이브","카고":"골드 쓰리","터보":"레드 원","폭스":"레드 쓰리"},"젯-인존":{"콜트":"퍼플 포","탱크":"골드 포","펀치":"블루 포","치프":"레드 파이브","디젤":"골드 포","불독":"골드 쓰리","점보":"블루 쓰리","카고":"골드 투","터보":"퍼플 원","폭스":"블루 투"},"4버티컬":{"콜트":"퍼플 파이브","탱크":"레드 투","펀치":"퍼플 쓰리","치프":"퍼플 파이브","디젤":"레드 포","불독":"레드 포","점보":"레드 쓰리","카고":"퍼플 쓰리","터보":"퍼플 파이브","폭스":"퍼플 포"},"크로스":{"디젤":"퍼플 파이브","불독":"레드 쓰리","점보":"골드 파이브","카고":"퍼플 원","터보":"레드 쓰리","폭스":"퍼플 투"}},
+"후반": {"블카페2":{"콜트":"레드 원","탱크":"골드 포","펀치":"블루 포","치프":"블루 쓰리","디젤":"블루 쓰리","불독":"블루 포","점보":"골드 원","카고":"블루 원","터보":"레드 투","폭스":"골드 쓰리"},"4버티컬":{"콜트":"레드 투","탱크":"레드 쓰리","펀치":"블루 투","치프":"골드 투","디젤":"퍼플 원","불독":"골드 쓰리","점보":"퍼플 포","카고":"골드 포","터보":"퍼플 투","폭스":"퍼플 포"},"오빗-인존":{"콜트":"레드 쓰리","탱크":"퍼플 파이브","펀치":"블루 원","치프":"레드 파이브","디젤":"레드 투","불독":"블루 파이브","점보":"퍼플 원","카고":"블루 쓰리","터보":"골드 투","폭스":"레드 쓰리"},"스매시아웃":{"콜트":"레드 포","탱크":"퍼플 원","펀치":"레드 파이브","치프":"퍼플 투","디젤":"골드 투","불독":"블루 쓰리","점보":"레드 쓰리","카고":"레드 원","터보":"블루 파이브","폭스":"퍼플 쓰리"},"인존":{"콜트":"레드 파이브","탱크":"블루 파이브","펀치":"레드 원","치프":"레드 투","디젤":"레드 파이브","불독":"퍼플 쓰리","점보":"골드 파이브","카고":"골드 파이브","터보":"블루 쓰리","폭스":"퍼플 투"},"크런치":{"콜트":"블루 원","탱크":"블루 쓰리","펀치":"골드 투","치프":"골드 파이브","디젤":"퍼플 파이브","불독":"레드 포","점보":"블루 포","카고":"블루 포","터보":"레드 파이브","폭스":"블루 투"},"PA 1포스트":{"콜트":"블루 투","탱크":"골드 쓰리","펀치":"블루 쓰리","치프":"레드 쓰리","디젤":"퍼플 투","불독":"레드 원"},"오빗-토스":{"콜트":"블루 쓰리","탱크":"골드 파이브","펀치":"골드 원","치프":"블루 파이브","디젤":"퍼플 포","불독":"골드 포","점보":"블루 투","카고":"레드 포","터보":"레드 쓰리","폭스":"레드 투"},"와이드스크린":{"콜트":"블루 포","탱크":"골드 투","펀치":"퍼플 포","치프":"블루 포","디젤":"레드 원","불독":"레드 파이브","점보":"블루 쓰리","카고":"골드 투","터보":"골드 원","폭스":"레드 포"},"다이브":{"콜트":"블루 파이브","탱크":"블루 포","펀치":"레드 포","치프":"블루 원","디젤":"블루 원","불독":"블루 투","점보":"블루 파이브","카고":"블루 투","터보":"레드 원","폭스":"블루 원"},"제로":{"콜트":"골드 원","탱크":"골드 원","펀치":"골드 파이브","치프":"퍼플 포","디젤":"블루 포","불독":"레드 쓰리","점보":"레드 파이브","카고":"레드 투","터보":"블루 원","폭스":"골드 원"},"제트-제로":{"콜트":"골드 투","탱크":"레드 파이브","펀치":"레드 쓰리","치프":"레드 포","디젤":"골드 원","불독":"블루 원","점보":"골드 투","카고":"퍼플 포","터보":"블루 투","폭스":"골드 포"},"젯-인존":{"콜트":"골드 쓰리","탱크":"레드 투","펀치":"퍼플 투","치프":"레드 원","디젤":"레드 포","불독":"퍼플 원","점보":"골드 포","카고":"퍼플 파이브","터보":"레드 포","폭스":"블루 쓰리"},"스매시인":{"콜트":"골드 포","탱크":"퍼플 포","펀치":"블루 파이브","치프":"퍼플 파이브","점보":"퍼플 투","카고":"퍼플 원","터보":"골드 파이브","폭스":"골드 투"},"QB드로우":{"콜트":"골드 파이브","탱크":"레드 원","펀치":"퍼플 쓰리","치프":"골드 원","디젤":"블루 투","불독":"퍼플 투","점보":"퍼플 쓰리","카고":"골드 쓰리","터보":"퍼플 쓰리","폭스":"블루 파이브"},"스틱":{"콜트":"퍼플 원","탱크":"퍼플 투","펀치":"골드 쓰리","치프":"퍼플 쓰리","디젤":"골드 파이브","불독":"골드 투","점보":"골드 쓰리","카고":"퍼플 쓰리","터보":"골드 포","폭스":"골드 파이브"},"대거섀로우":{"콜트":"퍼플 투","탱크":"블루 투","펀치":"레드 투","치프":"퍼플 원","디젤":"골드 쓰리","불독":"레드 투","점보":"블루 원","카고":"블루 파이브","터보":"퍼플 파이브","폭스":"레드 파이브"},"플러드":{"콜트":"퍼플 쓰리","탱크":"퍼플 쓰리","펀치":"골드 포","치프":"블루 투","디젤":"퍼플 쓰리","불독":"퍼플 포","점보":"레드 포","카고":"퍼플 투","터보":"퍼플 포","폭스":"레드 원"},"터널":{"콜트":"퍼플 포","탱크":"레드 포","펀치":"퍼플 원","치프":"골드 쓰리","디젤":"골드 포","불독":"퍼플 파이브","점보":"레드 원","카고":"골드 원","터보":"블루 포","폭스":"퍼플 파이브"},"올히치":{"콜트":"퍼플 파이브","탱크":"블루 원","펀치":"퍼플 파이브","치프":"골드 포","디젤":"블루 파이브","불독":"골드 원","점보":"퍼플 파이브","카고":"레드 쓰리","터보":"골드 쓰리","폭스":"블루 포"},"크로스":{"디젤":"레드 쓰리","불독":"골드 파이브","점보":"레드 투","카고":"레드 파이브","터보":"퍼플 원","폭스":"퍼플 원"}}
+};
+
+const META = {
+"인존":       {t:"런",   memo:"기본 안쪽 런 — 박스 숫자 유리할 때 · 커버4 상대로 좋음",  kw:"런 1st 리드지키기"},
+"다이브":     {t:"런",   memo:"가장 빨리 터지는 런 — 블리츠 와도 안전",                 kw:"런 골라인 숏야드 3rd short 백드업 블리츠"},
+"크런치":     {t:"런",   memo:"숏야드 1옵션 런 (젯 리드가 기본) · 커버4 상대로 좋음",    kw:"런 숏야드 골라인 3rd 4th 머스트해브"},
+"젯-인존":    {t:"런",   memo:"젯 모션으로 LB 옆으로 끌어내고 안쪽 런 · vs 3-3",        kw:"런 1st 모션"},
+"오빗-토스":  {t:"런",   memo:"바깥으로 토스 — 스피드로 모서리 돌기",                   kw:"런 외곽 아웃사이드"},
+"오빗-인존":  {t:"런",   memo:"오빗 모션으로 수비 시선 빼고 안쪽 런 (미스디렉션)",       kw:"런 미스디렉션 카운터펀치 리드지키기"},
+"QB드로우":   {t:"런",   memo:"패스인 척하다 QB 런 — 수비가 깊게 빠지는 롱다운에서",      kw:"런 2nd long 롱다운"},
+"올히치":     {t:"퀵",   memo:"DB가 멀리 서 있으면 그 앞에서 바로 받는 공짜 야드 · 커버3·4", kw:"퀵 3rd 2분"},
+"제로":       {t:"퀵",   memo:"스냅 즉시 던지는 초간단 퀵 — 코너 물러서 있을 때",         kw:"퀵 골라인 블리츠"},
+"스틱":       {t:"퀵",   memo:"플랫 수비수한테 둘 중 하나 포기시키는 퀵 · 커버2·4",       kw:"퀵 3rd 레드존"},
+"스매시인":   {t:"퀵",   memo:"안쪽 LB한테 둘 중 하나 포기시킴 — 레드존 전용",           kw:"퀵 레드존"},
+"제트-제로":  {t:"퀵",   memo:"젯 모션에 대한 수비 반응 보고 제로 퀵 — 코너 물러설 때",   kw:"퀵 모션 레드존 블리츠 카운터펀치"},
+"크로스":     {t:"샷",   memo:"리시버 교차로 픽(자연스러운 몸막기) 만들기 — 커버1(맨)에 최강 · 타이트더블·트립스 전용", kw:"샷 3rd long 픽 커버1 맨"},
+"4버티컬":    {t:"샷",   memo:"4명 다 세로로 — 딥 존 한 명이 둘 못 막음 · 커버3에 강함",  kw:"샷 2nd short 딥 2분"},
+"대거섀로우": {t:"샷",   memo:"필드 한가운데 빈 공간 공략 · 커버2·3",                    kw:"샷 3rd long 미들 카운터펀치"},
+"플러드":     {t:"샷",   memo:"한쪽 사이드에 3명 층층이 — 커버3 존 찢기",                kw:"샷 3rd long 2분 백드업"},
+"스매시아웃": {t:"샷",   memo:"코너 루트로 커버2 약점(코너 머리 위) 공략",               kw:"샷 3rd 2분"},
+"PA 1포스트": {t:"샷",   memo:"인존 페이크 → 백사이드 스키니 포스트 · 세이프티가 런에 속으면 던짐 · 커버2·3·4 전부 통함", kw:"샷 PA 플레이액션 딥 2nd short 1st"},
+"터널":       {t:"스크린", memo:"수비 러시가 심할 때 — 러시 지나가게 두고 안쪽 스크린",   kw:"스크린 2nd long 3rd long"},
+"와이드스크린":{t:"스크린", memo:"코너 물러서 있을 때 바깥 스크린",                      kw:"스크린 2nd long"},
+"블카페2":    {t:"블리츠 대응", memo:"블리츠 오면 빈 자리로 바로 던지는 패스 (첩보: 인하 커버0·1 미준비 → 쓸 일 적음)", kw:"블리츠"},
+};
+const TYPE_COLOR = {"런":"var(--run)","퀵":"var(--quick)","샷":"var(--shot)","스크린":"var(--screen)","블리츠 대응":"var(--blitz)"};
+const FAMS = [["더블",["콜트","탱크","펀치","치프"]],["타이트더블",["디젤","불독"]],["타이트트립스",["점보","카고"]],["트립스레프트",["터보"]],["트립스라이트",["폭스"]]];
+const BAND_C = {"레드":"var(--b-red)","블루":"var(--b-blue)","골드":"var(--b-gold)","퍼플":"var(--b-purple)"};
+const HURRICANE = ["스매시아웃","플러드","터널"];
+const NUM = {"원":"1","투":"2","쓰리":"3","포":"4","파이브":"5"};
+const SPECIALS = [
+ {name:"시리즈 (스매시아웃→플러드→터널)", band:"레드", fn:"showSeries()", kw:"시리즈 레드 2분 노허들 허리케인"},
+ {name:"샷건펀트", band:"블루", fn:"showSpecial('블루','샷건펀트','펀트 대형 스페셜')", kw:"블루 펀트 샷건 스페셜 4th"},
+ {name:"아이폼 시그널 다운 다이브", band:"골드", fn:"showSpecial('골드','아이폼 시그널 다운 다이브','특수 단일 플레이')", kw:"골드 아이폼 다운 다이브 시그널 스페셜"},
+ {name:"RB 쇼블", band:"퍼플", fn:"showSpecial('퍼플','RB 쇼블','특수 단일 플레이')", kw:"퍼플 쇼블 스페셜 알비"},
+];
+
+/* ───────── search helpers ───────── */
+const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+const chosung = s => [...s].map(ch=>{
+  const c = ch.charCodeAt(0)-0xAC00;
+  return (c>=0 && c<11172) ? CHO[Math.floor(c/588)] : ch;
+}).join("");
+const norm = s => s.toLowerCase().replace(/[\s\-·]/g,"");
+
+const PLAYS = Object.keys(META);
+const INDEX = PLAYS.map(p=>{
+  const fams = FAMS.filter(([f,codes])=>codes.some(c=>DATA["전반"][p]?.[c]||DATA["후반"][p]?.[c])).map(([f])=>f);
+  const searchable = [p, ...fams.map(f=>f+" "+p)].map(norm).join("|");
+  return {p, fams, n:norm(p), s:searchable, cs:chosung(norm(p)), kw:norm(META[p].kw+META[p].memo)};
+});
+
+let half = 1;
+const $q = document.getElementById("q"), $sugg = document.getElementById("sugg"),
+      $detail = document.getElementById("detail"), $clear = document.getElementById("clear");
+
+function setHalf(h){
+  half = h;
+  document.body.classList.toggle("h2", h===2);
+  document.getElementById("btn1").classList.toggle("on", h===1);
+  document.getElementById("btn2").classList.toggle("on", h===2);
+  if(current) current.fn();          // re-render whatever is on screen
+}
+
+function clearQ(){ $q.value=""; $q.focus(); onInput(); }
+
+function onInput(){
+  const raw = $q.value.trim();
+  $clear.style.display = raw ? "block" : "none";
+  $detail.style.display = "none"; current = null;
+  if(!raw){ home(); return; }
+  $cats.style.display = "none";
+  const q = norm(raw), qc = chosung(q);
+  const spHits = SPECIALS.filter(x => norm(x.name+x.kw).includes(q) || chosung(norm(x.name)).includes(qc));
+  const hits = INDEX.filter(x =>
+      x.s.includes(q) || x.cs.includes(qc) || x.kw.includes(q)
+  ).slice(0,12);
+  if(!hits.length && !spHits.length){ $sugg.innerHTML = `<li class="empty" style="border:0;background:none">'${raw}' — 해당 작전 없음</li>`; return; }
+  $sugg.innerHTML = spHits.map(x=>
+    `<li style="--pc:${BAND_C[x.band]}" onclick="${x.fn}"><span class="name">${x.name}</span><span class="tag">${x.band} 스페셜</span></li>`
+  ).join("") + hits.map(x=>{
+    const m = META[x.p];
+    const nm = x.p.replace(new RegExp(`(${raw.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")})`,"i"),"<mark>$1</mark>");
+    return `<li style="--pc:${TYPE_COLOR[m.t]}" onclick="showPlay('${x.p}','${matchedFam(q)||""}')">
+      <span class="name">${nm}</span><span class="tag">${m.t}</span></li>`;
+  }).join("");
+}
+function matchedFam(q){
+  for(const [f] of FAMS) if(q.includes(norm(f))) return f;
+  return null;
+}
+
+const SITS = [
+ {n:"1st & 10", rows:[["더블","인존"],["더블","크런치"],["더블","젯-인존"],["더블","오빗-인존"],["타이트트립스","인존"],["더블","스틱"],["더블","PA 1포스트","★런 터진 뒤"]]},
+ {n:"2nd & 숏 ★샷", star:1, rows:[["더블","PA 1포스트","★1옵션"],["더블","4버티컬"],["타이트트립스","4버티컬"],["더블","대거섀로우"],["더블","다이브"],["더블","제트-제로"]]},
+ {n:"2nd & 롱", rows:[["더블","터널"],["더블","와이드스크린"],["더블","QB드로우"],["더블","스틱"]]},
+ {n:"3rd & 1~2", rows:[["타이트더블","다이브"],["더블","크런치"],["타이트더블","크런치"]]},
+ {n:"3rd & 3~6", rows:[["더블","스틱"],["더블","스매시아웃"],["타이트트립스","스틱"],["더블","올히치"]]},
+ {n:"3rd & 7+", rows:[["더블","대거섀로우"],["타이트더블","크로스"],["더블","터널"],["더블","플러드"]]},
+ {n:"레드존", rows:[["더블","스매시인"],["타이트트립스","스매시인"],["더블","스틱"],["더블","제트-제로"],["더블","인존"]]},
+ {n:"골라인", rows:[["더블","다이브"],["타이트더블","다이브"],["더블","크런치"],["더블","QB드로우"],["더블","제로"]]},
+ {n:"4th & 숏", rows:[["더블","크런치"],["타이트더블","다이브"],["타이트더블","크런치"],["더블","스틱"]]},
+ {n:"백드업", rows:[["더블","다이브"],["더블","인존"],["더블","플러드"]]},
+ {n:"2분 공격", rows:[["시리즈"],["더블","올히치"],["더블","스매시아웃"],["더블","플러드"],["더블","4버티컬"]]},
+ {n:"vs 블리츠", rows:[["더블","블카페2"],["더블","다이브"],["더블","제로"],["더블","제트-제로"]]},
+ {n:"리드 지키기", rows:[["더블","인존"],["더블","크런치"],["더블","오빗-인존"],["더블","오빗-토스"],["더블","다이브"]]},
+ {n:"카운터펀치", rows:[["더블","대거섀로우"],["더블","오빗-인존"],["더블","제트-제로"],["타이트트립스","오빗-토스"],["더블","QB드로우"]]},
+];
+const $cats = document.getElementById("cats");
+let lastCat = null;
+let current = null;
+
+function renderCats(){
+  $cats.innerHTML = SITS.map((c,i)=>`<button class="${c.star?"star":""}" onclick="showCat(${i})">${c.n}</button>`).join("");
+}
+function home(){
+  lastCat = null; current = null;
+  $detail.style.display = "none"; $sugg.innerHTML = "";
+  $cats.style.display = "grid";
+}
+function backBtn(){
+  return `<button class="back" onclick="${lastCat!==null?`showCat(${lastCat})`:"home()"}">‹ 뒤로</button>`;
+}
+function showCat(i){
+  lastCat = i; current = {fn:()=>showCat(i)};
+  $cats.style.display = "none"; $sugg.innerHTML = ""; $q.value=""; $clear.style.display="none";
+  const c = SITS[i];
+  let html = `<div class="play-head" style="margin-top:14px"><h2>${c.n}</h2></div><ul class="cat-list">`;
+  for(const r of c.rows){
+    if(r[0]==="시리즈"){
+      html += `<li style="--pc:var(--b-red)" onclick="showSeries()"><span class="pname">시리즈 (레드 콜)</span><span class="note">레드 스페셜</span></li>`;
+      continue;
+    }
+    const [fam, play, note] = r, m = META[play];
+    html += `<li style="--pc:${TYPE_COLOR[m.t]}" onclick="showPlay('${play}','${fam}')">
+      <span class="pname">${play}</span><span class="fname">${fam}</span>
+      <span class="note">${note||m.t}</span></li>`;
+  }
+  html += `</ul><button class="back" onclick="home()">‹ 상황 목록</button>`;
+  $detail.innerHTML = html; $detail.style.display = "block";
+}
+renderCats();
+function showPlay(play, hitFam){
+  current = {fn:()=>showPlay(play, hitFam)};
+  $sugg.innerHTML = ""; $cats.style.display = "none";
+  const m = META[play], d = DATA[half===1?"전반":"후반"][play] || {};
+  let html = `
+    <div class="half-note">${half===1?"전반":"후반"} 아대 기준</div>
+    <div class="play-head"><h2>${play}</h2>
+      <span class="type-chip" style="background:${TYPE_COLOR[m.t]}">${m.t}</span></div>
+    <div class="memo">${m.memo}</div>`;
+  for(const [fam, codes] of FAMS){
+    const avail = codes.filter(c=>d[c]);
+    if(!avail.length) continue;
+    html += `<div class="fam ${fam===hitFam?"hit":""}"><h3>${fam}</h3><div class="calls">` +
+      avail.map(c=>{
+        const [band, num] = d[c].split(" ");
+        return `<div class="call">${c} <span class="band" style="background:${BAND_C[band]}">${band}</span> ${NUM[num]}</div>`;
+      }).join("") + `</div></div>`;
+  }
+  $detail.innerHTML = html + backBtn(); $detail.style.display = "block";
+  $q.blur();
+}
+
+function showSeries(){
+  current = {fn:showSeries};
+  $sugg.innerHTML=""; $q.value=""; $clear.style.display="none"; $cats.style.display="none";
+  const d = DATA[half===1?"전반":"후반"];
+  let html = `
+    <div class="half-note">${half===1?"전반":"후반"} 아대 기준</div>
+    <div class="play-head"><h2>시리즈</h2><span class="type-chip" style="background:var(--b-red)">레드 스페셜</span></div>
+    <div class="memo"><b>콜 = "레드 + 아무 숫자(1~5)"</b> — 코드네임 없이. 숫자는 의미 없음, 매번 바꿔서 패턴 은닉.<br>2분 노허들 3플레이 연속 — 아웃패스 2개로 클락스톱 → 마지막 터널로 미들. 개별 재콜 시 아래 콜 사용.</div>
+    <div class="seq">` +
+    HURRICANE.map((p,i)=>{
+      const calls = ["콜트","탱크","펀치","치프"].filter(c=>d[p]?.[c]).map(c=>{const[b,n]=d[p][c].split(" ");return `${c} ${b} ${NUM[n]}`;}).join("   ·   ");
+      return `<div><span>${i+1}</span>${p}<div style="font-size:14px;font-weight:600;color:#6b6a63;margin-top:4px">${calls}</div></div>`;
+    }).join("") + `</div>`;
+  $detail.innerHTML = html + backBtn(); $detail.style.display = "block";
+}
+
+function showSpecial(band, play, memo){
+  current = {fn:()=>showSpecial(band, play, memo)};
+  $sugg.innerHTML=""; $q.value=""; $clear.style.display="none"; $cats.style.display="none";
+  $detail.innerHTML = `
+    <div class="play-head"><h2>${play}</h2><span class="type-chip" style="background:${BAND_C[band]}">${band} 스페셜</span></div>
+    <div class="memo"><b>콜 = "${band} + 아무 숫자(1~5)"</b> — 코드네임 없이 밴드+숫자만 외침. 숫자는 의미 없음(매번 바꿔서 패턴 은닉).<br>${memo} · 전·후반 동일</div>
+    <div class="calls">` + ["1","2","3","4","5"].map(n=>`<div class="call"><span class="band" style="background:${BAND_C[band]}">${band}</span> ${n}</div>`).join("") + `</div>` + backBtn();
+  $detail.style.display = "block";
+}
+
+$q.addEventListener("input", onInput);
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  navigator.serviceWorker.register('./sw.js').catch(function(){});
+}
+</script>
+</body>
+</html>
